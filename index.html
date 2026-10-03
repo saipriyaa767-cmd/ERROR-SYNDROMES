@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Error Syndromes: Parity Probes</title>
+<style>
+:root{--c:#22d3ee;--p:#a78bfa;--g:#34d399;--x:#fb923c;--r:#f43f5e;--tx:#dff6ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:#050816;color:var(--tx);font:15px/1.45 system-ui,sans-serif;min-height:100vh}
+canvas#bg{position:fixed;inset:0;z-index:0}#app{position:relative;z-index:1;max-width:860px;margin:auto;padding:14px}
+h1{font-size:clamp(28px,8vw,56px);letter-spacing:.12em;margin:.3em 0 0;text-align:center;color:var(--c);text-shadow:0 0 20px var(--c)}
+h2{text-align:center;letter-spacing:.4em;color:var(--p);margin:0;text-shadow:0 0 14px var(--p)}.tag{text-align:center;color:var(--g);font-style:italic;font-size:17px}
+.panel{background:rgba(20,30,60,.55);backdrop-filter:blur(8px);border:1px solid rgba(34,211,238,.3);border-radius:14px;padding:12px;margin:10px 0;box-shadow:0 0 18px rgba(34,211,238,.12)}
+.row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0;align-items:center}
+button{background:rgba(34,211,238,.1);color:var(--c);border:1px solid var(--c);border-radius:8px;padding:9px 13px;font:600 13px system-ui;letter-spacing:.05em;cursor:pointer;min-height:40px}
+button:hover:not(:disabled){background:rgba(34,211,238,.28);box-shadow:0 0 12px var(--c)}button:disabled{opacity:.35;cursor:default}
+button.x{color:var(--x);border-color:var(--x)}button.z{color:var(--p);border-color:var(--p)}button.d{color:var(--r);border-color:var(--r)}button.on{background:rgba(34,211,238,.35)}
+input{background:#0b1230;color:var(--tx);border:1px solid var(--c);border-radius:8px;padding:9px;text-align:center}
+.hud{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;font-size:13px}.bar{display:inline-block;width:80px;height:8px;background:#1e293b;border-radius:4px;vertical-align:middle;margin:0 4px}.bar u{display:block;height:100%;background:linear-gradient(90deg,var(--c),var(--g));border-radius:4px}
+table{margin:auto;border-collapse:collapse}td,th{padding:4px 10px;text-align:center}
+.nd{width:78px;height:60px;cursor:pointer;overflow:visible}.nd circle{fill:rgba(34,211,238,.08);stroke:var(--c);stroke-width:2;filter:drop-shadow(0 0 5px var(--c))}.nd path{fill:none;stroke:var(--c);stroke-width:2.5;stroke-dasharray:6 3;animation:fl 1.4s linear infinite}.nd text{fill:var(--tx);font-size:10px;text-anchor:middle}
+.nd.ex circle,.nd.ex path{stroke:var(--x)}.nd.ez circle,.nd.ez path{stroke:var(--p)}.nd.ok circle,.nd.ok path{stroke:var(--g)}.nd.sus circle{stroke:#fde047;animation:pu .7s infinite alternate}.nd.sel circle{stroke-width:4}
+.nd.ex{animation:fp 1.2s infinite}@keyframes fl{to{stroke-dashoffset:-18}}@keyframes pu{to{stroke-width:5}}@keyframes fp{50%{transform:scaleY(-1)}}
+.rm *{animation:none!important;transition:none!important}
+.cn{width:36px;height:36px;border-radius:50%;padding:0;font-size:18px}
+#fl,#ts{position:fixed;left:50%;transform:translateX(-50%);z-index:9;pointer-events:none;font-weight:800;text-align:center;display:none}
+#fl{top:38%;font-size:clamp(22px,6vw,44px);text-shadow:0 0 22px currentColor;animation:pp .5s}#ts{bottom:20px;background:#111a3a;border:1px solid var(--g);border-radius:10px;padding:8px 14px;font-size:14px}@keyframes pp{from{transform:translateX(-50%) scale(.5);opacity:0}}
+.log{min-height:48px;color:#bff}.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}.lk{font:13px monospace;color:#9fe}.sm{font-size:13px;opacity:.85}
+.ov{position:fixed;inset:0;background:rgba(5,8,22,.85);z-index:8;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+</style></head><body><canvas id="bg"></canvas><div id="app"></div><div id="fl"></div><div id="ts"></div>
+<script>
+const D=['Beginner','Intermediate','Advanced'];
+const LV=[
+{n:'Tutorial: First Probe',t:['X'],r:2,i:'Noise hit one qubit. Link Q0,Q1 to A0 and Q1,Q2 to A1 (tap the circles), then run the probe.'},
+{n:'Level 1: Three-Qubit Shield',t:['X'],r:3,i:'A bit flip (X) swaps 0 and 1 on one qubit. Find it with parity probes, not by reading.'},
+{n:'Level 2: Phase Ghost',t:['Z'],r:3,i:'A phase flip (Z) is invisible to bit-flip probes. Look at the wave, not the value.'},
+{n:'Level 3: Stabilizer Matrix',t:['X','Z','XZ'],r:4,i:'Any error can strike. Use both probe bases and read both syndromes.'},
+{n:'Level 4: The Noise Storm',t:['X','Z','XZ'],r:6,storm:1,i:'Rapid-fire noise. Limited time and probes. Stay calm.'}];
+const AC_=[['par','Parity Detective','Extract your first syndrome'],['anc','Ancilla Engineer','Run an ancilla parity check'],['hun','Error Hunter','Locate 10 errors'],['nc','No-Cloning Specialist','Finish a level without trying to copy'],['stab','Stabilizer Master','Complete Level 3'],['qre','Quantum Repair Engineer','Complete the Noise Storm']];
+let S=Object.assign({call:'',xp:0,done:[],ach:{},found:0,lb:[],mute:0,rm:0,diff:0},ld()),G,scr='home',rnd=Math.random,AC;
+function ld(){try{return JSON.parse(localStorage.getItem('esp')||'{}')}catch(e){return{}}}
+function sv(){try{localStorage.setItem('esp',JSON.stringify(S))}catch(e){}}
+function beep(f,d=.12,t='sine'){if(S.mute)return;try{AC=AC||new AudioContext();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=.05;g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+function flash(t,c='var(--c)',ms=1100){const e=document.getElementById('fl');e.textContent=t;e.style.color=c;e.style.display='block';e.style.animation='none';e.offsetWidth;e.style.animation='';clearTimeout(flash.h);flash.h=setTimeout(()=>e.style.display='none',ms)}
+function toast(t){const e=document.getElementById('ts');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2600)}
+function ach(k){if(S.ach[k])return;S.ach[k]=1;sv();beep(880,.3);toast('🏆 '+AC_.find(a=>a[0]==k)[1])}
+function show(s){scr=s;R()}
+const nd=(l,c='',q='')=>`<svg class="nd ${c}" viewBox="0 0 80 60" ${q!==''?`onclick="sel(${q})"`:''}><circle cx="40" cy="30" r="26"/><path d="M12 30q7 ${c.includes('ez')?14:-14} 14 0t14 0 14 0 14 0"/><text x="40" y="57">${l}</text></svg>`;
+const leg=`<div class="row">${nd('X: bit flip','ex')}<span class="sm">X flips 0↔1 (orange, flips over)</span>${nd('Z: phase flip','ez')}<span class="sm">Z inverts the wave's phase (purple)</span></div>`;
+function go(){const v=document.getElementById('cs');if(v)S.call=v.value.trim().slice(0,12);if(!S.call)S.call='AGENT'+(Math.random()*99|0);sv();show('lv')}
+function R(){const a=document.getElementById('app');document.body.className=S.rm?'rm':'';
+if(scr=='home'){const lb=[...S.lb].sort((a,b)=>b.xp-a.xp).slice(0,5).map((e,i)=>`<div>${i+1}. ${e.c} — ${e.xp} XP</div>`).join('')||'<div class="sm">No runs yet.</div>';
+a.innerHTML=`<h1>ERROR SYNDROMES</h1><h2>PARITY PROBES</h2><p class="tag">“Repair a broken message without ever reading it.”</p><p style="text-align:center">Noise has corrupted a fragile quantum message. Use entangled helper qubits and parity probes to locate the error without directly measuring the protected quantum state.</p>
+<div class="row"><input id="cs" placeholder="Pick a callsign" value="${S.call}" maxlength="12"></div>
+<div class="row"><button onclick="go()">START MISSION</button><button onclick="show('how')">HOW TO PLAY</button><button onclick="lab()">QUANTUM LAB</button><button onclick="daily()">DAILY CHALLENGE</button><button onclick="demo()">🎬 WATCH DEMO</button></div>
+<div class="row"><button onclick="S.diff=(S.diff+1)%3;sv();R()">Difficulty: ${D[S.diff]}</button><button onclick="S.rm^=1;sv();R()">Reduced motion: ${S.rm?'on':'off'}</button><button onclick="S.mute^=1;sv();R()">Sound: ${S.mute?'muted':'on'}</button></div>
+<div class="g"><div class="panel"><b>LEADERBOARD</b> <span class="sm">(this device)</span>${lb}</div><div class="panel"><b>ACHIEVEMENTS</b>${AC_.map(x=>`<div class="sm">${S.ach[x[0]]?'🏆':'🔒'} ${x[1]} — ${x[2]}</div>`).join('')}</div></div><p class="sm" style="text-align:center">Total XP ${S.xp}</p>`}
+else if(scr=='how'){a.innerHTML=`<h1 style="font-size:32px">HOW TO PLAY</h1><div class="panel"><p>1. Noise secretly flips one data qubit. You are never told which.<br>2. Tap the circles to link data qubits to ancillas (CNOTs). Each ancilla then holds the <b>parity</b> of the qubits it touches.<br>3. RUN PARITY PROBE to read only the ancillas: the <b>syndrome</b>.<br>4. Match the syndrome to a qubit, select it, and apply the right correction.<br>5. Never press MEASURE DATA: it disturbs the message. COPY STATE won't work either (no-cloning).</p>${leg}<p class="sm">Keys: 1/2/3 select qubit · R run probe · H switch basis · X / Z / C correct · M measure · I hint · P pause</p></div><div class="row"><button onclick="show('home')">BACK</button></div>`}
+else if(scr=='lv'){a.innerHTML=`<h1 style="font-size:32px">SELECT MISSION</h1><p class="sm" style="text-align:center">Difficulty: ${D[S.diff]} · ${S.call}</p>`+LV.map((l,i)=>{const open=i==0||S.done.includes(i-1);return`<div class="panel"><b>${l.n}</b> ${S.done.includes(i)?'✅':''}<div class="sm">${open?l.i:'Locked: finish the previous mission'}</div><div class="row" style="justify-content:flex-start"><button ${open?'':'disabled'} onclick="start(${i},'play')">${S.done.includes(i)?'REPLAY':'PLAY'}</button><button ${open?'':'disabled'} onclick="start(${i},'practice')">PRACTICE (no lives)</button></div></div>`}).join('')+`<div class="row"><button onclick="show('home')">BACK</button></div>`}
+else if(scr=='game')a.innerHTML=gm();
+else if(scr=='sum')a.innerHTML=sumHtml}
+function seed(){let a=+new Date().toISOString().slice(0,10).replace(/-/g,'');return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function lab(){start(3,'lab')}function daily(){start(3,'daily')}
+function start(lv,mode){G={lv,mode,rd:0,lives:3,xp:0,integ:100,ok:0,bad:0,probes:0,found:0,clone:0,hints:0,disc:new Set(),paused:0,lock:0,msgs:[]};rnd=mode=='daily'?seed():Math.random;nr();show('game')}
+const cf=()=>G.mode=='daily'?{t:['X','Z','XZ'],r:5}:G.mode=='lab'?{t:['X','Z','XZ'],r:999}:LV[G.lv];
+const pl=()=>G.mode=='play'||G.mode=='daily';
+function lim(){const s=LV[G.lv].storm;return pl()?(s?[8,6,4][S.diff]:[99,99,6][S.diff]):99}
+function nr(){const c=cf(),t=c.t[rnd()*c.t.length|0];G.rd++;G.err={q:rnd()*3|0,X:t.includes('X'),Z:t.includes('Z')};G.circ=new Set();G.basis='Z';G.syn={};G.sel=null;G.pr=0;G.mis=0;G.res=0;G.lock=0;
+const tl=(pl()&&G.lv>0)||G.mode=='daily'?[90,60,40][S.diff]*(cf().storm?.5:1):0;G.tm=tl;G.tmax=tl;
+G.msgs=[G.rd==1&&cf().i?cf().i:'⚡ Noise struck the register. Which qubit, and what kind of error?'];if(G.rd>1)flash('⚡ NOISE DETECTED','var(--x)',900);beep(120,.25,'sawtooth')}
+const say=m=>{G.msgs.unshift(m);G.msgs=G.msgs.slice(0,3)};
+function tgl(q,j){if(G.lock)return;const k=q+','+j;G.circ.has(k)?G.circ.delete(k):G.circ.add(k);G.syn={};beep(520,.08,'triangle');say('CNOT placed: Q'+q+' controls A'+j+'. A'+j+' now tracks the parity of its linked qubits.');R()}
+function sel(q){if(G.lock)return;G.sel=G.sel==q?null:q;beep(380,.05);R()}
+const sg=q=>[0,1].map(j=>+G.circ.has(q+','+j));
+function sus(b){const s=G.syn[b];if(!s)return null;if(!s[0]&&!s[1])return{z:1};const c=[0,1,2].filter(q=>sg(q)+''==s+'');return c.length==1?{q:c[0]}:{amb:1}}
+function lose(m,v){if(!pl()){say(m+' (practice: no penalty)');return}G.lives--;G.integ=Math.max(0,G.integ-25);G.bad++;G.mis++;say(m);beep(110,.35,'sawtooth');flash(v||'✖ ERROR','var(--r)',900);if(G.lives<=0)setTimeout(()=>fin(0),900)}
+function basis(){if(G.lock)return;G.basis=G.basis=='Z'?'X':'Z';G.disc.add('Z errors hide from bit-flip probes; a Hadamard (X-basis) probe reveals them');beep(440,.08);R()}
+function run(){if(G.lock)return;if(!G.circ.size){lose('Invalid circuit: add at least one CNOT first.','INVALID CIRCUIT');R();return}
+if(G.pr>=lim()){lose('Out of ancilla resources!');R();return}
+G.pr++;G.probes++;const has=G.basis=='Z'?G.err.X:G.err.Z,s=[0,1].map(j=>has&&G.circ.has(G.err.q+','+j)?1:0);G.syn[G.basis]=s;beep(660,.2);
+if([0,1].some(j=>[0,1,2].filter(q=>G.circ.has(q+','+j)).length>1)){ach('anc');G.disc.add('Ancillas collect parity of data qubits without reading them')}
+const r=sus(G.basis);
+if(r.z)say('Syndrome 00: this probe sees no '+(G.basis=='Z'?'bit':'phase')+' flip. '+(G.basis=='Z'?'A phase flip would stay hidden. Try the H basis.':'')),G.disc.add('Syndrome 00 = no error of that type detected');
+else{ach('par');if(r.q!=null){say('The ancilla changed. Syndrome '+s.join('')+' points to Q'+r.q+', and the data was never read.');G.disc.add('Different syndromes point to different damaged qubits')}else say('Syndrome '+s.join('')+' is ambiguous: your links cannot separate the qubits. Rewire.')}
+if(G.probes%3==0)say('Notice the syndrome changes depending on which qubit is damaged.');R()}
+function meas(){if(G.lock)return;G.disc.add('Measuring the data qubits destroys the protected superposition');if(pl()){G.rd--;lose('Direct measurement can disturb the protected quantum information. Stage restarted.','⚠️ PROTOCOL VIOLATION');if(G.lives>0)setTimeout(()=>{nr();R()},900)}else{say('⚠️ PROTOCOL VIOLATION: measuring the data would collapse the message (practice: no penalty).')}R()}
+function cl(){G.clone++;G.disc.add('No-cloning: |ψ⟩ cannot be copied to |ψψψ⟩, so we entangle instead');say('No-cloning theorem: |ψ⟩ → |ψψψ⟩ is forbidden. The code spreads information by entanglement instead.');beep(150,.2);R()}
+function fix(g){if(G.lock)return;const e=G.err,q=G.sel;if(q==null){say('Select a data qubit first (tap it or press 1/2/3).');R();return}
+const cs=g.split(''),okq=q==e.q,miss=cs.filter(c=>!e[c]);
+if(okq&&!miss.length){cs.forEach(c=>e[c]=0);beep(700,.1);if(!e.X&&!e.Z)return win();say('Good: that component is fixed. Something remains. Probe again in the other basis.');R()}
+else lose(!okq?'Wrong qubit. Check which qubit your syndrome points to.':'Wrong gate. X cures bit flips, Z cures phase flips. Z-basis probes see X errors; H-basis probes see Z errors.','✖ WRONG CORRECTION'),R()}
+function win(){G.lock=1;G.ok++;G.found++;S.found++;G.res=1;let x=100,b=['+100 repair'];const f=G.tmax&&G.tm>G.tmax/2;
+if(f){x+=30;b.push('+30 fast')}if(G.circ.size<=4){x+=20;b.push('+20 efficient')}if(!G.mis){x+=20;b.push('+20 zero mistakes')}if(!G.clone)x+=0;
+if(pl())G.xp+=x;say('You located the error without directly reading the protected state. '+b.join(' '));flash('QUANTUM STATE RESTORED','var(--g)',1200);beep(880,.3);beep(1175,.4);
+if(S.found>=10)ach('hun');sv();R();setTimeout(()=>G.ok>=cf().r?fin(1):(nr(),R()),1500)}
+function fin(w){G.lock=1;if(pl()){S.xp+=G.xp;if(G.xp)S.lb.push({c:S.call,xp:G.xp});S.lb=S.lb.slice(-30)}
+if(w&&G.mode=='play'){if(!S.done.includes(G.lv))S.done.push(G.lv);if(!G.clone)ach('nc');if(G.lv==3)ach('stab');if(G.lv==4)ach('qre')}sv();
+const acc=G.ok+G.bad?Math.round(100*G.ok/(G.ok+G.bad)):100;
+sumHtml=`<h1 style="font-size:32px;color:${w?'var(--g)':'var(--r)'}">${w?'MISSION COMPLETE':'SIGNAL LOST'}</h1><div class="panel"><div class="g"><div>XP earned: <b>${G.xp}</b></div><div>Repairs: <b>${G.ok}</b></div><div>Syndrome accuracy: <b>${acc}%</b></div><div>Probes run: <b>${G.probes}</b></div><div>Mistakes: <b>${G.bad}</b></div><div>Hints used: <b>${G.hints}</b></div></div></div><div class="panel"><b>What you discovered</b>${[...G.disc].map(d=>`<div class="sm">✔ ${d}</div>`).join('')||'<div class="sm">Probe and experiment to discover the rules.</div>'}</div><div class="row">${w&&G.mode=='play'&&G.lv<4?`<button onclick="start(${G.lv+1},'play')">NEXT MISSION</button>`:''}<button onclick="start(${G.lv},'${G.mode}')">REPLAY</button><button onclick="show('lv')">MISSIONS</button><button onclick="show('home')">HOME</button></div>`;
+flash(w?'MISSION COMPLETE':'SIGNAL LOST',w?'var(--g)':'var(--r)');show('sum')}
+let sumHtml='';
+function hint(){if(G.lock)return;G.hints++;if(pl())G.xp=Math.max(0,G.xp-15);const e=G.err,rz=sus('Z'),rx=sus('X');let h;
+if(!G.circ.size)h='Link Q0 and Q1 to A0, and Q1 and Q2 to A1. Each ancilla compares two data qubits.';
+else if(!rz&&!rx)h='Press RUN PARITY PROBE and watch the ancillas.';
+else if(rz&&rz.q!=null||rx&&rx.q!=null){const q=(rz&&rz.q!=null)?rz.q:rx.q,g=(rz&&rz.q!=null&&rx&&rx.q!=null)?'X + Z':(rz&&rz.q!=null)?'X':'Z';h=`Select Q${q} and apply ${g}. (Hint cost 15 XP.)`}
+else if((rz&&rz.amb)||(rx&&rx.amb))h='Give each qubit a different ancilla pattern (e.g. Q0→A0, Q1→A0 and A1, Q2→A1).';
+else h='Syndrome 00 only means this probe type sees nothing. Switch basis with H and probe again.';
+say('💡 '+h);R()}
+function pause(){G.paused=1;R()}
+function restart(){start(G.lv,G.mode)}
+function gm(){const c=cf(),e=G.err,rz=sus(G.basis);
+const row=q=>{const cls=G.res?'ok':(rz&&rz.q==q?'sus':'')+(G.sel==q?' sel':'');return`<tr><td>${nd('Q'+q,cls,q)}</td>${[0,1].map(j=>`<td><button class="cn" onclick="tgl(${q},${j})" aria-label="CNOT Q${q} to A${j}">${G.circ.has(q+','+j)?'●':'○'}</button></td>`).join('')}</tr>`};
+const lk=Object.keys(G.syn).length?`<div class="lk">${[0,1,2].map(q=>`Q${q} → ${sg(q).join('')}`).join(' · ')}<br>${['Z','X'].filter(b=>G.syn[b]).map(b=>`${b}-basis syndrome ${G.syn[b].join('')}`).join(' · ')}</div>`:'<div class="sm">Run a probe to build your syndrome lookup.</div>';
+return`<div class="panel hud"><b>${c.n||'Daily / Lab'}${G.mode!='play'?' ['+G.mode+']':''}</b><span>${pl()?'❤️'.repeat(G.lives)+'🖤'.repeat(3-G.lives):'∞'}</span><span>INTEGRITY<i class="bar"><u style="width:${G.integ}%"></u></i>${G.integ}%</span><span>XP ${G.xp}</span><span id="tm">${G.tm?Math.ceil(G.tm)+'s':'⏱ ∞'}</span><span>ROUND ${G.rd}${c.r<99?'/'+c.r:''}</span><span><button onclick="pause()">⏸</button> <button onclick="restart()">↻</button> <button onclick="S.mute^=1;sv();R()">${S.mute?'🔇':'🔊'}</button> <button onclick="show('lv')">☰</button></span></div>
+<div class="panel"><div class="sm" style="text-align:center">DATA REGISTER · tap ○ to place a CNOT (data → ancilla) · Probe basis: <b>${G.basis=='Z'?'Z (finds bit flips)':'H→X (finds phase flips)'}</b></div>
+<table><tr><th></th>${[0,1].map(j=>`<th>${nd('A'+j,'')}<div>${G.syn[G.basis]?'= '+G.syn[G.basis][j]:'= ?'}</div></th>`).join('')}</tr>${[0,1,2].map(row).join('')}</table>
+<div class="row"><button class="${G.basis=='X'?'on':''}" onclick="basis()">H BASIS (H)</button><button onclick="run()">RUN PARITY PROBE (R)</button><button class="d" onclick="meas()">MEASURE DATA (M)</button><button class="d" onclick="cl()">COPY STATE</button></div>
+<div class="row"><button class="x" onclick="fix('X')">X CORRECTION</button><button class="z" onclick="fix('Z')">Z CORRECTION</button><button onclick="fix('XZ')">X + Z CORRECTION</button><button onclick="hint()">💡 HINT (-15 XP)</button>${!pl()?'<button onclick="nr();R()">NEW NOISE</button>':''}</div></div>
+<div class="g"><div class="panel log">${G.msgs.map(m=>`<div>${m}</div>`).join('')}</div><div class="panel">${lk}</div></div>${leg}${G.paused?`<div class="ov"><h2>PAUSED</h2><button onclick="G.paused=0;R()">RESUME (P)</button></div>`:''}`}
+setInterval(()=>{if(scr!='game'||!G||G.paused||G.lock||!G.tm)return;G.tm-=.25;const t=document.getElementById('tm');if(t)t.textContent=Math.ceil(G.tm)+'s';
+if(G.tm<=0){G.rd--;lose('Time ran out! The noise spread.','⏱ TIME UP');if(G.lives>0){nr();R()}}},250);
+addEventListener('keydown',e=>{if(scr!='game'||e.target.tagName=='INPUT')return;const k=e.key.toLowerCase();
+if('123'.includes(k)&&k)sel(+k-1);else if(k=='r')run();else if(k=='h')basis();else if(k=='x')fix('X');else if(k=='z')fix('Z');else if(k=='c')fix('XZ');else if(k=='m')meas();else if(k=='i')hint();else if(k=='p'){G.paused^=1;R()}});
+const cv=document.getElementById('bg'),cx=cv.getContext('2d');let P=[];
+function rs(){cv.width=innerWidth;cv.height=innerHeight;P=Array.from({length:50},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,v:.2+Math.random()*.6,c:['#22d3ee','#a78bfa','#34d399','#3b82f6'][Math.random()*4|0]}))}
+function dr(){cx.clearRect(0,0,cv.width,cv.height);cx.strokeStyle='rgba(34,211,238,.07)';for(let y=60;y<cv.height;y+=120){cx.beginPath();cx.moveTo(0,y);cx.lineTo(cv.width,y);cx.stroke()}
+P.forEach(p=>{if(!S.rm){p.y-=p.v;if(p.y<0)p.y=cv.height}cx.fillStyle=p.c;cx.globalAlpha=.6;cx.beginPath();cx.arc(p.x,p.y,2,0,7);cx.fill()});cx.globalAlpha=1;requestAnimationFrame(dr)}
+const sl=ms=>new Promise(r=>setTimeout(r,ms));
+async function demo(){if(demo.on)return;demo.on=1;const cap=t=>{say('🎬 '+t);R()};
+try{start(1,'practice');await sl(2000);cap('Noise hit ONE hidden qubit. We must find it without reading the data.');await sl(3500);
+cap('Step 1: link data qubits to ancillas with CNOTs.');await sl(2000);
+for(const [q,j] of [[0,0],[1,0],[1,1],[2,1]]){tgl(q,j);await sl(1100)}
+cap('Each ancilla now holds the parity of the qubits it touches.');await sl(3500);
+cap('Step 2: run the parity probe. Only the ancillas are read.');await sl(2500);run();await sl(4000);
+const r=sus('Z');if(r&&r.q!=null){cap('The syndrome points to Q'+r.q+'. Select it.');await sl(2500);sel(r.q);await sl(1500);cap('Bit flip found by Z-basis probe, so apply X.');await sl(2500);fix('X')}
+await sl(4500);start(2,'practice');await sl(2000);cap('Level 2: phase flips (Z). Wire the same checks...');await sl(3000);
+for(const [q,j] of [[0,0],[1,0],[1,1],[2,1]]){tgl(q,j);await sl(900)}
+run();await sl(3500);cap('Syndrome 00! Bit-flip probes cannot see phase flips.');await sl(4000);
+basis();cap('Switch to the H basis to expose phase errors.');await sl(3000);run();await sl(3500);
+const r2=sus('X');if(r2&&r2.q!=null){cap('Now the syndrome reveals Q'+r2.q+'.');await sl(2500);sel(r2.q);await sl(1500);fix('Z')}
+await sl(4000);cap('You repaired the message without ever reading it. Now try it yourself!')}catch(e){}
+demo.on=0}
+addEventListener('resize',rs);rs();dr();R();
+</script></body></html>
